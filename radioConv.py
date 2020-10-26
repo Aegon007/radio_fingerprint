@@ -79,14 +79,14 @@ def baselineBlock(input, block_idx):
 
 
 def createBaseline(inp_shape, emb_size):
-    input_data = Input(shape=inp_shape)
     dense_layer_size = ['None', 256, 256, 128]
     act_func = ['None', 'relu', 'relu', 'relu']
 
-    blockNum = 5
-    model = Input(shape=inp_shape)
+    blockNum = 4
+    input_data = Input(shape=inp_shape)
+    model = baselineBlock(input_data, 1)
     for i in range(blockNum):
-        model = baselineBlock(model, i+1)
+        model = baselineBlock(model, i+2)
 
     dense_layer = Dense(dense_layer_size[1], name='dense1', activation=act_func[1])(model)
     dense_layer = Dense(dense_layer_size[2], name='dense2', activation=act_func[2])(dense_layer)
@@ -97,8 +97,8 @@ def createBaseline(inp_shape, emb_size):
     return conv_model
 
 
-def createResnet():
-    return resnet50_2D.create_model()
+def createResnet(inp_shape, emb_size):
+    return resnet50_2D.create_model(inp_shape, emb_size)
 
 
 def create_model(opts, inp_shape, NUM_CLASS):
@@ -116,7 +116,7 @@ def create_model(opts, inp_shape, NUM_CLASS):
 
 
 def test_run(model):
-    pass
+    model.compile(optimizer='adam', loss='mse')
 
 
 def test(opts):

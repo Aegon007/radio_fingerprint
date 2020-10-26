@@ -3,6 +3,7 @@
 import json
 import warnings
 import numpy as np
+import pdb
 
 CLASS_INDEX = None
 CLASS_INDEX_PATH = ('https://storage.googleapis.com/download.tensorflow.org/'
@@ -16,6 +17,7 @@ _KERAS_UTILS = None
 
 
 def get_submodules_from_kwargs(kwargs):
+
     backend = kwargs.get('backend', _KERAS_BACKEND)
     layers = kwargs.get('layers', _KERAS_LAYERS)
     models = kwargs.get('models', _KERAS_MODELS)
