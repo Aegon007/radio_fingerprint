@@ -1,18 +1,23 @@
-#!/usr/bin/python3
+#! /usr/bin/python3
 
 import os
 import sys
 import argparse
 import pdb
 
-from keras.layers import Dense, Dropout, Flatten, MaxPooling1D, BatchNormalization, GlobalAveragePooling1D, Conv1D
-from keras.models import Sequential
-from keras.callbacks import ModelCheckpoint, LearningRateScheduler, EarlyStopping, Callback
+from keras.layers import Dense, Dropout, Flatten, Input
+from keras.layers import MaxPooling2D, BatchNormalization
+from keras.layers import Activation, GlobalAveragePooling2D, Conv2D
+from keras.models import Sequential, Model
+from keras.callbacks import ModelCheckpoint, LearningRateScheduler
+from keras.callbacks import EarlyStopping, Callback
 import keras.backend as K
 from keras.utils import np_utils
 
 import numpy as np
 import pandas as pd
+
+import resnet50_2D
 
 ROOT_DIR = os.getenv('ROOT_DIR')
 resDir = os.path.join(ROOT_DIR, 'resDir')
@@ -21,139 +26,118 @@ os.makedirs(modelDir, exist_ok=True)
 
 
 def generate_default_params(dataType):
-    return {
-            'depth': 3,
-            'optimizer': 'Adam',
-            'learning_rate': 0.01,
-            'act': 'selu',
-            'drop_rate1': 0.3,
-            'drop_rate2': 0.1,
-            'drop_rate3': 0.3,
-            'drop_rate4': 0.5,
-            'drop_rate5': 0.5,
-            'batch_size': 70,
-            'data_dim': 5000,
-            'epochs': 500,
-            'conv1': 64,
-            'conv2': 128,
-            'conv3': 256,
-            'conv4': 128,
-            'conv5': 128,
-            'pool1': 5,
-            'pool2': 3,
-            'pool3': 1,
-            'pool4': 3,
-            'pool5': 3,
-            'kernel_size1': 15,
-            'kernel_size2': 21,
-            'kernel_size3': 15,
-            'kernel_size4': 11,
-            'kernel_size5': 11,
-            'dense': 130,
-            'dense_act': 'softsign'
-            }
-
-
-def baselineBlock():
     pass
 
 
-def createHomegrown():
-def DF(input_shape=None, emb_size=None, Classification=False):
+def createHomegrown(inp_shape, emb_size):
     # -----------------Entry flow -----------------
-    input_data = Input(shape=input_shape)
+    input_data = Input(shape=inp_shape)
 
-    filter_num = ['None', 32, 64, 128, 256]
-    kernel_size = ['None', 8, 8, 8, 8]
-    conv_stride_size = ['None', 1, 1, 1, 1]
-    pool_stride_size = ['None', 4, 4, 4, 4]
-    pool_size = ['None', 8, 8, 8, 8]
+    filter_num = ['None', 50, 50]
+    kernel_size = ['None', (2, 7), (2, 7)]
+    conv_stride_size = ['None', 1, 1]
+    pool_stride_size = ['None', 1, 1]
+    activation_func = ['None', 'relu', 'relu']
+    dense_layer_size = ['None', 256, 80]
 
-    model = Conv1D(filters=filter_num[1], kernel_size=kernel_size[1],
+    model = Conv2D(filters=filter_num[1], kernel_size=kernel_size[1],
                    strides=conv_stride_size[1], padding='same', name='block1_conv1')(input_data)
-    model = ELU(alpha=1.0, name='block1_adv_act1')(model)
-    model = Conv1D(filters=filter_num[1], kernel_size=kernel_size[1],
-                   strides=conv_stride_size[1], padding='same', name='block1_conv2')(model)
-    model = ELU(alpha=1.0, name='block1_adv_act2')(model)
-    model = MaxPooling1D(pool_size=pool_size[1], strides=pool_stride_size[1],
-                         padding='same', name='block1_pool')(model)
-    model = Dropout(0.1, name='block1_dropout')(model)
+    model = Activation(activation_func[1], name='block1_act1')(model)
+    model = Dropout(0.5, name='block1_dropout')(model)
 
-    model = Conv1D(filters=filter_num[2], kernel_size=kernel_size[2],
+    model = Conv2D(filters=filter_num[2], kernel_size=kernel_size[2],
                    strides=conv_stride_size[2], padding='same', name='block2_conv1')(model)
-    model = Activation('relu', name='block2_act1')(model)
-    model = Conv1D(filters=filter_num[2], kernel_size=kernel_size[2],
-                   strides=conv_stride_size[2], padding='same', name='block2_conv2')(model)
-    model = Activation('relu', name='block2_act2')(model)
-    model = MaxPooling1D(pool_size=pool_size[2], strides=pool_stride_size[3],
-                         padding='same', name='block2_pool')(model)
-    model = Dropout(0.1, name='block2_dropout')(model)
-
-    model = Conv1D(filters=filter_num[3], kernel_size=kernel_size[3],
-                   strides=conv_stride_size[3], padding='same', name='block3_conv1')(model)
-    model = Activation('relu', name='block3_act1')(model)
-    model = Conv1D(filters=filter_num[3], kernel_size=kernel_size[3],
-                   strides=conv_stride_size[3], padding='same', name='block3_conv2')(model)
-    model = Activation('relu', name='block3_act2')(model)
-    model = MaxPooling1D(pool_size=pool_size[3], strides=pool_stride_size[3],
-                         padding='same', name='block3_pool')(model)
-    model = Dropout(0.1, name='block3_dropout')(model)
-
-    model = Conv1D(filters=filter_num[4], kernel_size=kernel_size[4],
-                   strides=conv_stride_size[4], padding='same', name='block4_conv1')(model)
-    model = Activation('relu', name='block4_act1')(model)
-    model = Conv1D(filters=filter_num[4], kernel_size=kernel_size[4],
-                   strides=conv_stride_size[4], padding='same', name='block4_conv2')(model)
-    model = Activation('relu', name='block4_act2')(model)
-    model = MaxPooling1D(pool_size=pool_size[4], strides=pool_stride_size[4],
-                         padding='same', name='block4_pool')(model)
+    model = Activation(activation_func[2], name='block2_act1')(model)
+    model = Dropout(0.5, name='block2_dropout')(model)
 
     output = Flatten()(model)
 
-    if Classification:
-        dense_layer = Dense(emb_size, name='FeaturesVec', activation='softmax')(output)
-    else:
-        dense_layer = Dense(emb_size, name='FeaturesVec')(output)
+    dense_layer = Dense(dense_layer_size[1], name='dense1', activation='relu')(output)
+    dense_layer = Dense(dense_layer_size[2], name='dense2', activation='relu')(dense_layer)
+    dense_layer = Dense(emb_size, name='dense3', activation='softmax')(dense_layer)
+
     shared_conv2 = Model(inputs=input_data, outputs=dense_layer)
     return shared_conv2
 
 
-def createBaseline():
-    pass
+def baselineBlock(input, block_idx):
+    filter_num = ['None', 128, 128]
+    kernel_size = ['None', (7, 2), (5, 2)]
+    conv_stride = ['None', 1, 1]
+    pool_size = ['None', (2, 2)]
+    pool_stride = ['None', 1]
+    act_func = 'relu'
+
+    model = Conv2D(filters=filter_num[1], kernel_size=kernel_size[1], name='conv1_{}'.format(block_idx),
+                   strides=conv_stride[1], padding='same', activation=act_func)(input)
+    model = Conv2D(filters=filter_num[2], kernel_size=kernel_size[2], name='conv2_{}'.format(block_idx),
+                   strides=conv_stride[2], padding='same', activation=act_func)(model)
+    output = MaxPooling2D(pool_size=pool_size[1], strides=pool_stride[1], padding='same',
+                         name='pool_{}'.format(block_idx))(model)
+
+    return output
+
+
+def createBaseline(inp_shape, emb_size):
+    input_data = Input(shape=inp_shape)
+    dense_layer_size = ['None', 256, 256, 128]
+    act_func = ['None', 'relu', 'relu', 'relu']
+
+    blockNum = 5
+    model = Input(shape=inp_shape)
+    for i in range(blockNum):
+        model = baselineBlock(model, i+1)
+
+    dense_layer = Dense(dense_layer_size[1], name='dense1', activation=act_func[1])(model)
+    dense_layer = Dense(dense_layer_size[2], name='dense2', activation=act_func[2])(dense_layer)
+    dense_layer = Dense(dense_layer_size[3], name='dense3', activation=act_func[3])(dense_layer)
+    dense_layer = Dense(emb_size, name='dense4', activation='softmax')(dense_layer)
+
+    conv_model = Model(inputs=input_data, outputs=dense_layer)
+    return conv_model
 
 
 def createResnet():
-    pass
+    return resnet50_2D.create_model()
 
 
-def create_model(opts, NUM_CLASS):
+def create_model(opts, inp_shape, NUM_CLASS):
+    emb_size = NUM_CLASS
     if 'homegrown' == opts.modelType:
-        model = createHomegrown()
+        model = createHomegrown(inp_shape, emb_size)
     elif 'baseline' == opts.modelType:
-        model = createBaseline()
+        model = createBaseline(inp_shape, emb_size)
     elif 'resnet' == opts.modelType:
-        model = createResnet()
+        model = createResnet(inp_shape, emb_size)
     else:
         raise ValueError('model type {} not support yet'.format(opts.modelType))
 
     return model
 
 
+def test_run(model):
+    pass
+
+
 def test(opts):
     modelTypes = ['homegrown', 'baseline', 'resnet']
+    NUM_CLASS = 10
+    inp_shape = (288, 2, 1)
+    signal = True
     for modelType in modelTypes:
-        model = create_model()
+        opts.modelType = modelType
+        model = create_model(opts, inp_shape, NUM_CLASS)
         try:
             flag = test_run(model)
         except Exception as e:
-            print(e.message)
+            print(e)
 
-    print('all done!')
+    print('all done!') if signal else print('test failed')
 
 
 def parseArgs(argv):
     parser = argparse.ArgumentParser()
-    parser.add_argument('-m', '--modelType', help='')
+    parser.add_argument('-m', '--modelType', default='homegrown', help='')
     opts = parser.parse_args()
     return opts
 

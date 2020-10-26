@@ -4,17 +4,12 @@
     https://arxiv.org/abs/1512.03385) (CVPR 2016 Best Paper Award)
 Adapted from code contributed by BigMoyan.
 """
-
 import os
-import sys
-import argparse
 import pdb
 import warnings
 
-from keras import layers
-
-import imagenet_utils
 from imagenet_utils import get_submodules_from_kwargs
+import imagenet_utils
 from imagenet_utils import decode_predictions
 from imagenet_utils import _obtain_input_shape
 
@@ -53,20 +48,20 @@ def identity_block(input_tensor, kernel_size, filters, stage, block):
     conv_name_base = 'res' + str(stage) + block + '_branch'
     bn_name_base = 'bn' + str(stage) + block + '_branch'
 
-    x = layers.Conv1D(filters1, 1,
+    x = layers.Conv2D(filters1, (1, 1),
                       kernel_initializer='he_normal',
                       name=conv_name_base + '2a')(input_tensor)
     x = layers.BatchNormalization(axis=bn_axis, name=bn_name_base + '2a')(x)
     x = layers.Activation('relu')(x)
 
-    x = layers.Conv1D(filters2, kernel_size,
+    x = layers.Conv2D(filters2, kernel_size,
                       padding='same',
                       kernel_initializer='he_normal',
                       name=conv_name_base + '2b')(x)
     x = layers.BatchNormalization(axis=bn_axis, name=bn_name_base + '2b')(x)
     x = layers.Activation('relu')(x)
 
-    x = layers.Conv2D(filters3, 1,
+    x = layers.Conv2D(filters3, (1, 1),
                       kernel_initializer='he_normal',
                       name=conv_name_base + '2c')(x)
     x = layers.BatchNormalization(axis=bn_axis, name=bn_name_base + '2c')(x)
@@ -76,7 +71,12 @@ def identity_block(input_tensor, kernel_size, filters, stage, block):
     return x
 
 
-def conv_block(input_tensor, kernel_size, filters, stage, block, strides=2):
+def conv_block(input_tensor,
+               kernel_size,
+               filters,
+               stage,
+               block,
+               strides=(2, 2)):
     """A block that has a conv layer at shortcut.
     # Arguments
         input_tensor: input tensor
@@ -100,36 +100,40 @@ def conv_block(input_tensor, kernel_size, filters, stage, block, strides=2):
     conv_name_base = 'res' + str(stage) + block + '_branch'
     bn_name_base = 'bn' + str(stage) + block + '_branch'
 
-    x = layers.Conv1D(filters1, 1, strides=strides,
+    x = layers.Conv2D(filters1, (1, 1), strides=strides,
                       kernel_initializer='he_normal',
                       name=conv_name_base + '2a')(input_tensor)
     x = layers.BatchNormalization(axis=bn_axis, name=bn_name_base + '2a')(x)
     x = layers.Activation('relu')(x)
 
-    x = layers.Conv1D(filters2, kernel_size, padding='same',
+    x = layers.Conv2D(filters2, kernel_size, padding='same',
                       kernel_initializer='he_normal',
                       name=conv_name_base + '2b')(x)
     x = layers.BatchNormalization(axis=bn_axis, name=bn_name_base + '2b')(x)
     x = layers.Activation('relu')(x)
 
-    x = layers.Conv1D(filters3, 1,
+    x = layers.Conv2D(filters3, (1, 1),
                       kernel_initializer='he_normal',
                       name=conv_name_base + '2c')(x)
     x = layers.BatchNormalization(axis=bn_axis, name=bn_name_base + '2c')(x)
 
-    shortcut = layers.Conv1D(filters3, 1, strides=strides,
+    shortcut = layers.Conv2D(filters3, (1, 1), strides=strides,
                              kernel_initializer='he_normal',
                              name=conv_name_base + '1')(input_tensor)
-
-    shortcut = layers.BatchNormalization(axis=bn_axis, name=bn_name_base + '1')(shortcut)
+    shortcut = layers.BatchNormalization(
+        axis=bn_axis, name=bn_name_base + '1')(shortcut)
 
     x = layers.add([x, shortcut])
     x = layers.Activation('relu')(x)
     return x
 
 
-def ResNet50(include_top=True, weights='imagenet', input_tensor=None,
-             input_shape=None, pooling=None, classes=1000,
+def ResNet50(include_top=True,
+             weights='imagenet',
+             input_tensor=None,
+             input_shape=None,
+             pooling=None,
+             classes=1000,
              **kwargs):
     """Instantiates the ResNet50 architecture.
     Optionally loads weights pre-trained on ImageNet.
