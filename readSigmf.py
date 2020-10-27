@@ -14,7 +14,7 @@ from sigmf import SigMFFile, sigmffile
 import mytools.tools as mytools
 
 
-def loadData(metafile, binfile):
+def createSignal(metafile, binfile):
     # Load a dataset
     with open(metafile, 'r') as f:
         metadata = json.loads(f.read())
@@ -71,10 +71,10 @@ def formInpData(raw_data, sample_length, selectedNum):
     return rtn_samples
 
 
-def splitData(allData, splitRatio):
+def splitData(allData, allLabel, splitRatio):
     np.random.seed(42)
     allDataSize = len(allData)
-    shuffled_indices = np.random.permutation(len(allData))
+    shuffledind = np.random.permutation(len(allData))
     allData = np.array(allData)
 
     train_set_size = int(allDataSize * splitRatio['train'])
@@ -82,53 +82,105 @@ def splitData(allData, splitRatio):
     test_set_size = int(allDataSize * splitRatio['test'])
 
     start, end = 0, train_set_size
-    train_indices = shuffled_indices[start: end]
+    train_ind = shuffledind[start: end]
 
     start, end = train_set_size, train_set_size + val_set_size
-    val_indices = shuffled_indices[start: end]
+    val_ind = shuffledind[start: end]
 
     start, end = train_set_size + val_set_size, train_set_size + val_set_size + test_set_size
-    test_indices = shuffled_indices[start: end]
+    test_ind = shuffledind[start: end]
 
-    return allData[train_indices], allData[val_indices], allData[test_indices]
+    return allData[train_ind], allLabel[traini_ind], allData[val_ind], allLabel[val_ind], allData[test_ind], allLabel[test_ind]
 
 
-def splitChuckData(opts, chuckList, splitRatio, sample_length, selectedNum, label):
+def readDataFile(chuckList, sample_length, selectedNum):
+    allData = []
+    for chuck in chuckList:
+        oneChuck = formInpData(chuck, sample_length, selectedNum)
+        allData.append(oneChuck)
+    return allData
+
+
+def splitChuckData(opts, splitRatio, allData, allLabel):
     if opts.splitType == 'random':
-        allData = []
-        for chuck in chuckList:
-            oneChuck = formInpData(chuck, sample_length, selectedNum)
-            allData.append(oneChuck)
-
-        trainData, valData, testData = splitData(allData, splitRatio)
-
-        trainLabels = np.ones(trainData.shape[1]) * label
-        valLabels = np.ones(valData.shape[1]) * label
-        testLabels = np.ones(testData.shape[1]) * label
-
+        trainData, trainLabels, valData, valLabels, testData, testLabels = splitData(allData, allLabel, splitRatio)
     elif opts.splitType == 'order':
         pass
     else:
         raise
-
     return trainData, trainLabels, valData, valLabels, testData, testLabels
 
 
-def get_samples(opts, signal, label):
+def get_oneDay_samples(signal, label, params):
     # Get some metadata and all annotations
-    sample_length = 288
-    selectedNum = 10000
-    chuckNum = 10
-    splitRatio = {'train': 0.7, 'val': 0.2, 'test': 0.1}
+    chuckNum = params['chuckNum']
+    sample_length = params['sample_length']
+    selectedNum = params['selectedNum']
 
     raw_data = signal.read_samples(0, -1)
-
     chuckList = divideIntoChucks(raw_data, chuckNum)
 
+    oneData = readDataFile(chuckList, sample_length, selectedNum)
+    oneLabel = np.ones(oneData.shape[0], dtype=np.int) * label
+    return oneData, oneLabel
 
 
-def getFilesAndLabels(x_day_dir):
+def searchFp(fname, metaFileList):
+    for mfp in metaFileList:
+        mfn = os.path.basename(mfp).split(mfp)
+        if mfn == fname:
+            return mfp
+    return ''
+
+
+def getSignalList(fpTuple):
+    binFileList, metaFileList = fpTuple
+    signalList = []
+    for bfp in binFileList:
+        fname = os.path.basename(bfp).split('.')[0]
+        mfp = searchFp(fname, metaFileList)
+        if not mfp:
+            raise ValueError('binfile {} does not have a match'.format(bfp))
+        signal = createSignal(mfp, bfp)
+        signalList.append(signal)
+    return signalList
+
+
+def getOneDevData(fpTuple, label, params):
+    signalList = getSignalList(fpTuple)
+    allData, allLabel = [], []
+    for signal in signalList:
+        oneData, oneLabel = get_oneDay_samples(signal, label, params)
+        allData.extend(oneData)
+        allLabel.extend(allLabel)
+
+    return allData, allLabel
+
+
+def getfpTuple(strLabel, x_day_dir):
+    dayDevDir = os.path.join(x_day_dir, strLabel)
+    fList = os.listdir(dayDevDir)
+    binFileList, metaFileList = [], []
+    for fname in fList:
+        fp = os.path.join(dayDevDir, fname)
+        if fp.endswith('bin'):
+            binFileList.append(fp)
+        elif fp.endswith('sigmf-meta'):
+            metaFileList.append(fp)
+        else:
+            raise
+    return (binFileList, metaFileList)
+
+
+def getDataAndLabels(opts, x_day_dir):
     '''this is made to read one day data'''
+    params = {
+            'sample_length': 288,
+            'selectedNum': 10000,
+            'chuckNum': 10,
+            'splitRatio': {'train': 0.7, 'val': 0.2, 'test': 0.1}
+            }
+
     devList = os.listdir(x_day_dir)
     label2Data = defaultdict()
 
@@ -138,11 +190,11 @@ def getFilesAndLabels(x_day_dir):
         fpTuple = getfpTuple(strLabel, x_day_dir)
         label2Data[i] = fpTuple
 
-        oneData, oneLabel = getOneDevData(fpTuple)
+        oneData, oneLabel = getOneDevData(fpTuple, i)
         allData.extend(oneData)
         allLabel.extend(oneLabel)
 
-    trainData, trainLabels, valData, valLabels, testData, testLabels = splitChuckData(opts, chuckList, splitRatio, sample_length, selectedNum, label)
+    trainData, trainLabels, valData, valLabels, testData, testLabels = splitChuckData(opts, splitRatio, allData, allLabel)
     return trainData, trainLabels, valData, valLabels, testData, testLabels
 
 
@@ -154,11 +206,10 @@ def test_read_one_data(opts):
     binfile = os.path.join(opts.input, file_idx+'.bin')
     metafile = os.path.join(opts.input, file_idx+'.sigmf-meta')
 
-    signal = loadData(metafile, binfile)
+    signal = createSignal(metafile, binfile)
     trainData, trainLabels, valData, valLabels, testData, testLabels = get_samples(opts, signal, label)
     print(trainData.shape, valData.shape, testData.shape)
     print(trainLabels)
-
 
 
 def parseArgs(argv):
