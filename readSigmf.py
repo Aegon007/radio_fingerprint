@@ -127,7 +127,11 @@ def get_samples(opts, signal, label):
     return trainData, trainLabels, valData, valLabels, testData, testLabels
 
 
-def test_this_script(opts):
+def getFilesAndLabels(opts):
+    
+
+
+def test_read_one_data(opts):
     # Load a dataset
     file_idx = 'A_1_1'
     label = 0
@@ -152,35 +156,5 @@ def parseArgs(argv):
 
 if __name__ == "__main__":
     opts = parseArgs(sys.argv)
-    test_this_script(opts)
+    test_read_one_data(opts)
     print('all test passed!')
-
-
-'''
-def read_file(signal):
-    # Get some metadata and all annotations
-    sample_rate = signal.get_global_field(SigMFFile.SAMPLE_RATE_KEY)
-    sample_rate = int(sample_rate.split(' ')[0])
-    sample_count = signal.sample_count
-    signal_duration = sample_count / sample_rate
-    annotations = signal.get_annotations()
-
-    # Iterate over annotations
-    for adx, annotation in enumerate(annotations):
-        annotation_start_idx = annotation[SigMFFile.START_INDEX_KEY]
-        annotation_length = annotation[SigMFFile.LENGTH_INDEX_KEY]
-        annotation_comment = annotation.get(SigMFFile.COMMENT_KEY, "[annotation {}]".format(adx))
-
-        # Get capture info associated with the start of annotation
-        capture = signal.get_capture_info(annotation_start_idx)
-        freq_center = capture.get(SigMFFile.FREQUENCY_KEY, 0)
-        freq_min = freq_center - 0.5*sample_rate
-        freq_max = freq_center + 0.5*sample_rate
-
-        # Get frequency edges of annotation (default to edges of capture)
-        freq_start = annotation.get(SigMFFile.FLO_KEY)
-        freq_stop = annotation.get(SigMFFile.FHI_KEY)
-
-        # Get the samples corresponding to annotation
-        samples = signal.read_samples(annotation_start_idx, annotation_length)
-'''
