@@ -5,10 +5,13 @@ import pdb
 import argparse
 import random
 
+from collections import defaultdict
 import json
 import numpy as np
 import itertools
 from sigmf import SigMFFile, sigmffile
+
+import mytools.tools as mytools
 
 
 def loadData(metafile, binfile):
@@ -122,13 +125,25 @@ def get_samples(opts, signal, label):
 
     chuckList = divideIntoChucks(raw_data, chuckNum)
 
+
+
+def getFilesAndLabels(x_day_dir):
+    '''this is made to read one day data'''
+    devList = os.listdir(x_day_dir)
+    label2Data = defaultdict()
+
+    allData, allLabel = [], []
+    for i in range(len(devList)):
+        strLabel = devList[i]
+        fpTuple = getfpTuple(strLabel, x_day_dir)
+        label2Data[i] = fpTuple
+
+        oneData, oneLabel = getOneDevData(fpTuple)
+        allData.extend(oneData)
+        allLabel.extend(oneLabel)
+
     trainData, trainLabels, valData, valLabels, testData, testLabels = splitChuckData(opts, chuckList, splitRatio, sample_length, selectedNum, label)
-
     return trainData, trainLabels, valData, valLabels, testData, testLabels
-
-
-def getFilesAndLabels(opts):
-    
 
 
 def test_read_one_data(opts):
