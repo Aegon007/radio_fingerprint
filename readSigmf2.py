@@ -69,14 +69,27 @@ def divideIntoChucks(raw_data, chuckNum):
     return chuckList
 
 
-def formInpData(raw_data, sample_length, selectedNum):
+def formInpData(raw_data, sample_length, selectedNum, params):
+    dataOpt = params['dataOpt']
+    if 2 == dataOpt:
+        selectedIndex = params['selectedIndex']
     start_range = len(raw_data) - sample_length
     raw_samples = []
     for i in range(start_range):
         tmp_sample = get_one_sample(raw_data, i, sample_length)
         raw_samples.append(tmp_sample)
 
-    selectedSamples = random.sample(raw_samples, selectedNum)
+    if 1 == dataOpt:
+        selectedSamples = random.sample(raw_samples, selectedNum)
+    elif 2 == dataOpt:
+        raw_samples = np.array(raw_samples)
+        selectedSamples = raw_samples[selectedIndex]
+        selectedSamples = list(selectedSamples)
+    elif 3 == dataOpt:
+        selectedSamples = raw_samples[:selectedNum]
+    else:
+        raise
+
     rtn_samples = []
     for tmp_sample in selectedSamples:
         tmp_sample = convert2IQdata(tmp_sample)
@@ -85,9 +98,15 @@ def formInpData(raw_data, sample_length, selectedNum):
     return rtn_samples
 
 
-def getSplitIndex(allDataSize, splitRatio):
+def generateIndex(allDataSize):
     np.random.seed(42)
     shuffledind = np.random.permutation(allDataSize)
+
+    return shuffledind
+
+
+def getSplitIndex(allDataSize, splitRatio):
+    shuffledind = generateIndex(allDataSize)
 
     train_set_size = int(allDataSize * splitRatio['train'])
     val_set_size = int(allDataSize * splitRatio['val'])
@@ -103,14 +122,6 @@ def getSplitIndex(allDataSize, splitRatio):
     test_ind = shuffledind[start: end]
 
     return train_ind, val_ind, test_ind
-
-
-def readDataFile(chuckList, sample_length, selectedNum):
-    allData = []
-    for chuck in chuckList:
-        oneChuck = formInpData(chuck, sample_length, selectedNum)
-        allData.extend(oneChuck)
-    return allData
 
 
 def splitData(opts, splitRatio, allData, allLabel):
@@ -140,8 +151,15 @@ def get_signal_samples(signal, label, params):
 
     raw_data = signal.read_samples(0, -1)
     chuckList = divideIntoChucks(raw_data, chuckNum)
+    chuckList = chuckList[0]  # only take the first chuck
 
-    oneData = readDataFile(chuckList, sample_length, selectedNum)
+    if params['dataOpt'] == 2:
+        totalNum = len(chuckList)
+        allRanIndex = generateIndex(totalNum)
+        selectedIndex = allRanIndex[:params['selectedNum']]
+        params['selectedIndex'] = selectedIndex
+
+    oneData = formInpData(chuckList, sample_length, selectedNum, params)
     oneLabel = np.ones(len(oneData), dtype=np.int) * label
     print('raw data length is: ', len(oneData))
     return oneData, oneLabel
@@ -198,7 +216,7 @@ def getfpTuple(strLabel, x_day_dir):
 def generate_default_params():
     params = {
             'sample_length': 288,
-            'selectedNum': 10000,
+            'selectedNum': 100000,
             'chuckNum': 10,
             'splitRatio': {'train': 0.7, 'val': 0.2, 'test': 0.1}
             }
@@ -208,6 +226,12 @@ def generate_default_params():
 def getData(opts, x_day_dir):
     '''this is made to read one day data'''
     params = generate_default_params()
+
+    # dataOpt
+    #   1: take diff random number across 5 devices
+    #   2: take same random number across 5 devices
+    #   3: take consecutive 100k slices
+    params['dataOpt'] = 1
 
     devList = os.listdir(x_day_dir)
     label2Data = defaultdict()
