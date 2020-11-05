@@ -48,7 +48,6 @@ def loadData(args):
     n_slices_per_dev = args.num_slice
     start_ix = args.start_ix
     dev_dir_list = [os.path.join(args.root_dir, a) for a in args.antenna_dir]
-    file_keyword = args.file_key
 
     n_devices = len(dev_dir_list)
     slice_dims = (2, args.slice_len)
@@ -58,8 +57,7 @@ def loadData(args):
     X_data, y_data = [], []
 
     for i, d in enumerate(dev_dir_list):
-
-        pre_X_data = dev_bin_dataset(os.path.join(d, file_keyword), samps_to_retrieve, start_ix)
+        pre_X_data = dev_bin_dataset(d, samps_to_retrieve, start_ix)
         y_data = np.concatenate((y_data, i * np.ones(n_slices_per_dev, )), axis=0)
         X_data_pd = []
         count_s = 0
@@ -83,21 +81,13 @@ def loadData(args):
 
 
 class loadDataOpts():
-    def __init__(self, 
-        root_dir, antenna_dir
-            file_key
-            num_slice
-            start_ix
-            slice_len
-            stride
-            ):
-        self.root_dir
-            antenna_dir
-            file_key
-            num_slice
-            start_ix
-            slice_len
-            stride
+    def __init__(self, root_dir, antenna_dir, num_slice=100000, start_ix=0, slice_len=288, stride=1):
+        self.root_dir = root_dir
+        self.antenna_dir = antenna_dir
+        self.num_slice = num_slice
+        self.start_ix = start_ix
+        self.slice_len = slice_len
+        self.stride = stride
 
 
 def parseArgs(argv):
@@ -106,7 +96,6 @@ def parseArgs(argv):
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('-d', '--root_dir', required=True, help='Root directory for the devices\' folders.')
     parser.add_argument('-a', '--antenna_dir', required=True, nargs='+', help='A list of devices as \' folders.')
-    parser.add_argument('-k', '--file_key', required=True, help='The keyword to be used for source .bin or .sigmf-data files.')
     parser.add_argument('-n', '--num_slice', required=True, type=int, help='Number of slices to be generated for each device.')
     parser.add_argument('-i', '--start_ix', type=int, default=0, help='Starting read index in .bin files.')
     parser.add_argument('-l', '--slice_len', type=int, required=True, help='Lenght of slices.')
