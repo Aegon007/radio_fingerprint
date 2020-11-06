@@ -11,19 +11,13 @@ import numpy as np
 
 import radioConv
 import readSigmf2 as readSigmf
+import load_slice_IQ
 import config
 
 ROOT_DIR = os.getenv('ROOT_DIR')
 resDir = os.path.join(ROOT_DIR, 'resDir')
 modelDir = os.path.join(resDir, 'modelDir')
 os.makedirs(modelDir, exist_ok=True)
-
-
-def reShapeForInp(x, y):
-    #x = x[:, :, np.newaxis]
-    clsNum = len(set(list(y)))
-    y = np_utils.to_categorical(y, clsNum)
-    return x, y
 
 
 def main(opts):
@@ -37,16 +31,13 @@ def main(opts):
 
     print('loading data...')
     x_day_dir = opts.input
-    train_x, train_y, val_x, val_y, test_x, test_y = readSigmf.getData(opts, x_day_dir)
-    NUM_CLASS = len(set(list(test_y)))
-
-    train_x, train_y = reShapeForInp(train_x, train_y)
-    val_x, val_y = reShapeForInp(val_x, val_y)
-    test_x, test_y = reShapeForInp(test_x, test_y)
+    #train_x, train_y, val_x, val_y, test_x, test_y = readSigmf.getData(opts, x_day_dir)
+    dataOpts = load_slice_IQ.loadDataOpts(opts.input, num_slice=100000)
+    train_x, train_y, test_x, test_y, NUM_CLASS = load_slice_IQ.loadData(dataOpts)
 
     print('get the model and compile it...')
     inp_shape = (train_x.shape[1], train_x.shape[2])
-    model = radioConv.create_model(opts, inp_shape, NUM_CLASS)
+    model = radioConv.create_model(opts, inp_shape, NUM_CLASS, channel='last')
     model.summary()
     model.compile(optimizer='adam', loss='categorical_crossentropy', metrics='accuracy')
 
@@ -56,7 +47,7 @@ def main(opts):
               epochs=Epoch_Num,
               verbose=opts.verbose,
               callbacks=callBackList,
-              validation_data=[val_x, val_y],
+              validation_split=0.1,
               shuffle=True)
 
     print('test the trained model...')

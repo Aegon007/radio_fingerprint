@@ -26,7 +26,7 @@ modelDir = os.path.join(resDir, 'modelDir')
 os.makedirs(modelDir, exist_ok=True)
 
 
-def createHomegrown(inp_shape, emb_size):
+def createHomegrown(inp_shape, emb_size, data_format):
     # -----------------Entry flow -----------------
     input_data = Input(shape=inp_shape)
 
@@ -38,12 +38,12 @@ def createHomegrown(inp_shape, emb_size):
     dense_layer_size = ['None', 256, 80]
 
     model = Conv1D(filters=filter_num[1], kernel_size=kernel_size[1],
-                   strides=conv_stride_size[1], padding='same', name='block1_conv1')(input_data)
+                   strides=conv_stride_size[1], padding='same', name='block1_conv1', data_format=data_format)(input_data)
     model = Activation(activation_func[1], name='block1_act1')(model)
     model = Dropout(0.5, name='block1_dropout')(model)
 
     model = Conv1D(filters=filter_num[2], kernel_size=kernel_size[2],
-                   strides=conv_stride_size[2], padding='same', name='block2_conv1')(model)
+                   strides=conv_stride_size[2], padding='same', name='block2_conv1', data_format=data_format)(model)
     model = Activation(activation_func[2], name='block2_act1')(model)
     model = Dropout(0.5, name='block2_dropout')(model)
 
@@ -75,7 +75,7 @@ def baselineBlock(input, block_idx):
     return output
 
 
-def createBaseline(inp_shape, emb_size):
+def createBaseline(inp_shape, emb_size, data_format):
     dense_layer_size = ['None', 256, 256, 128]
     act_func = ['None', 'relu', 'relu', 'relu']
 
@@ -96,18 +96,25 @@ def createBaseline(inp_shape, emb_size):
     return conv_model
 
 
-def createResnet(inp_shape, emb_size):
+def createResnet(inp_shape, emb_size, data_format):
     return resnet50_1D.create_model(inp_shape, emb_size)
 
 
-def create_model(opts, inp_shape, NUM_CLASS):
+def create_model(opts, inp_shape, NUM_CLASS, channel='last'):
+    if 'first' == channel:
+        data_format = 'channels_first'
+    elif 'last' == channel:
+        data_format = 'channels_last'
+    else:
+        raise
+
     emb_size = NUM_CLASS
     if 'homegrown' == opts.modelType:
-        model = createHomegrown(inp_shape, emb_size)
+        model = createHomegrown(inp_shape, emb_size, data_format)
     elif 'baseline' == opts.modelType:
-        model = createBaseline(inp_shape, emb_size)
+        model = createBaseline(inp_shape, emb_size, data_format)
     elif 'resnet' == opts.modelType:
-        model = createResnet(inp_shape, emb_size)
+        model = createResnet(inp_shape, emb_size, data_format)
     else:
         raise ValueError('model type {} not support yet'.format(opts.modelType))
 
