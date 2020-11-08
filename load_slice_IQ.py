@@ -9,16 +9,25 @@ from keras.utils import np_utils
 import utils
 
 
+def normalizeData(v):
+    # keepdims makes the result shape (1, 1, 3) instead of (3,). This doesn't matter here, but
+    # would matter if you wanted to normalize over a different axis.
+    v_min = v.min(axis=(0, 1), keepdims=True)
+    v_max = v.max(axis=(0, 1), keepdims=True)
+    v = (v - v_min)/(v_max - v_min)
+    return v
+
+
 def read_f32_bin(filename, start_ix):
-    bin_f = open(filename, 'rb')
-    iq_seq = np.fromfile(bin_f, dtype='<f4')
-    n_samples = iq_seq.shape[0] // 2
+    with open(filename, 'rb') as bin_f:
+        iq_seq = np.fromfile(bin_f, dtype='<f4')
+        n_samples = iq_seq.shape[0] // 2
 
-    IQ_data = np.zeros((2, n_samples))
+        IQ_data = np.zeros((2, n_samples))
 
-    IQ_data[0, :] = iq_seq[range(0, iq_seq.shape[0]-1, 2)]
-    IQ_data[1, :] = iq_seq[range(1, iq_seq.shape[0], 2)]
-    bin_f.close()
+        IQ_data[0, :] = iq_seq[range(0, iq_seq.shape[0]-1, 2)]
+        IQ_data[1, :] = iq_seq[range(1, iq_seq.shape[0], 2)]
+
     del iq_seq
     return IQ_data[:, start_ix:]
 
@@ -91,19 +100,24 @@ def loadData(args):
         del pre_X_data
         del X_data_pd
 
+    if args.D2:
+        x_train = x_train[:, np.newaxis, :, :]
+        x_test = x_test[:, np.newaxis, :, :]
+
     y_train = np_utils.to_categorical(y_train, n_devices)
     y_test = np_utils.to_categorical(y_test, n_devices)
     return x_train, y_train, x_test, y_test, n_devices
 
 
 class loadDataOpts():
-    def __init__(self, root_dir, file_key='*.bin', num_slice=100000, start_ix=0, slice_len=288, stride=1):
+    def __init__(self, root_dir, D2, file_key='*.bin', num_slice=100000, start_ix=0, slice_len=288, stride=1):
         self.root_dir = root_dir
         self.num_slice = num_slice
         self.start_ix = start_ix
         self.slice_len = slice_len
         self.stride = stride
         self.file_key = file_key
+        self.D2 = D2
 
 
 def parseArgs(argv):
@@ -116,6 +130,7 @@ def parseArgs(argv):
     parser.add_argument('-l', '--slice_len', type=int, default=288, help='Lenght of slices.')
     parser.add_argument('-s', '--stride', type=int, default=1, help='Stride used for windowing.')
     parser.add_argument('-f', '--file_key', default='*.bin', help='used to choose different filetype, choose from *.bin/*.sigmf-meta')
+    parser.add_argument('--D2', action='store_true', help='')
     opts = parser.parse_args()
     return opts
 
@@ -123,6 +138,7 @@ def parseArgs(argv):
 if __name__ == "__main__":
     opts = parseArgs(sys.argv)
     x_train, y_train, x_test, y_test, NUM_CLASS = loadData(opts)
+    pdb.set_trace()
     print('train data shape: ', x_train.shape, 'train label shape: ', y_train.shape)
     print('test data shape: ', x_test.shape, 'test label shape: ', y_test.shape)
     print('all test done!')

@@ -77,6 +77,7 @@ def formInpData(raw_data, sample_length, selectedNum, params):
     raw_samples = []
     for i in range(start_range):
         tmp_sample = get_one_sample(raw_data, i, sample_length)
+        pdb.set_trace()
         raw_samples.append(tmp_sample)
 
     if 1 == dataOpt:
