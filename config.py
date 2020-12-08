@@ -14,5 +14,6 @@ def parse_args(argv):
     parser.add_argument('-v', '--verbose', action='store_true', help='')
     parser.add_argument('--D2', action='store_true', help='')
     parser.add_argument('-n', '--normalize', action='store_true', help='')
+    parser.add_argument('-ds', '--dataSource', help='choose from neu/simu')
     opts = parser.parse_args()
     return opts

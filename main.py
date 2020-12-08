@@ -55,7 +55,7 @@ def main(opts):
         raise NotImplementedError()
 
     # setup params
-    Batch_Size = 128
+    Batch_Size = 64
     Epoch_Num = 100
     saveModelPath = os.path.join(modelDir, 'best_model_{}.h5'.format(opts.modelType))
     checkpointer = ModelCheckpoint(filepath=saveModelPath, monitor='val_accuracy', verbose=1, save_best_only=True, mode='max')

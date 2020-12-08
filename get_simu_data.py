@@ -30,8 +30,8 @@ def loadData(outfile):
 
     # do not know what fc data is
     # here we need to merge train and val data
-    train_data = np.concatenate(x_train, x_val, axis=0)
-    train_label = np.concatenate(y_train, y_val, axis=0)
+    train_data = np.concatenate((x_train, x_val), axis=0)
+    train_label = np.concatenate((y_train, y_val), axis=0)
 
     dict_wifi['x_train'] = train_data
     dict_wifi['y_train'] = train_label
