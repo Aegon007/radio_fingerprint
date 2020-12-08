@@ -15,6 +15,7 @@ import radioConv
 import readSigmf2 as readSigmf
 import load_slice_IQ
 import config
+import get_simu_data
 
 ROOT_DIR = os.getenv('ROOT_DIR')
 resDir = os.path.join(ROOT_DIR, 'resDir')
@@ -22,15 +23,7 @@ modelDir = os.path.join(resDir, 'modelDir')
 os.makedirs(modelDir, exist_ok=True)
 
 
-def main(opts):
-    # setup params
-    Batch_Size = 128
-    Epoch_Num = 100
-    saveModelPath = os.path.join(modelDir, 'best_model_{}.h5'.format(opts.modelType))
-    checkpointer = ModelCheckpoint(filepath=saveModelPath, monitor='val_accuracy', verbose=1, save_best_only=True, mode='max')
-    earlyStopper = EarlyStopping(monitor='val_accuracy', mode='max', patience=10)
-    callBackList = [checkpointer, earlyStopper]
-
+def loadNeuData(opts):
     print('loading data...')
     x_day_dir = opts.input
     #train_x, train_y, val_x, val_y, test_x, test_y = readSigmf.getData(opts, x_day_dir)
@@ -40,6 +33,34 @@ def main(opts):
     if opts.normalize:
         train_x = load_slice_IQ.normalizeData(train_x)
         test_x = load_slice_IQ.normalizeData(test_x)
+
+    return train_x, train_y, test_x, test_y, NUM_CLASS
+
+
+def loadSimuData(opts):
+    simu_dict, NUM_CLASS = get_simu_data.loadData(opts.input)
+    x_train, y_train = simu_dict['x_train'], simu_dict['y_train']
+    x_test, y_test = simu_dict['x_test'], simu_dict['y_test']
+
+    return x_train, y_train, x_test, y_test, NUM_CLASS
+
+
+def main(opts):
+    # load data
+    if 'neu' == opts.dataSource:
+        train_x, train_y, test_x, test_y, NUM_CLASS = loadNeuData(opts)
+    elif 'simu' == opts.dataSource:
+        train_x, train_y, test_x, test_y, NUM_CLASS = loadSimuData(opts)
+    else:
+        raise NotImplementedError()
+
+    # setup params
+    Batch_Size = 128
+    Epoch_Num = 100
+    saveModelPath = os.path.join(modelDir, 'best_model_{}.h5'.format(opts.modelType))
+    checkpointer = ModelCheckpoint(filepath=saveModelPath, monitor='val_accuracy', verbose=1, save_best_only=True, mode='max')
+    earlyStopper = EarlyStopping(monitor='val_accuracy', mode='max', patience=10)
+    callBackList = [checkpointer, earlyStopper]
 
     print('get the model and compile it...')
     if opts.D2:
